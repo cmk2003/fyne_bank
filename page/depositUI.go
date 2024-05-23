@@ -64,6 +64,7 @@ func MakeDepositUI(w fyne.Window, userInfo model.User) fyne.CanvasObject {
 			return
 		}
 		err = cardService.Saving(cardNumber, password, amount, selectedCardTypeID)
+		//交易表插入数据
 		if err != nil {
 			dialog.ShowInformation("失败", err.Error(), w)
 		} else {

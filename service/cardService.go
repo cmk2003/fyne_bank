@@ -23,7 +23,7 @@ func (c *CardService) GetCardType(id uint) []ResCardType {
 	var resCardType []ResCardType
 	for _, v := range account {
 		resCardType = append(resCardType, ResCardType{
-			ID:          v.ID,
+			ID:          v.AccountTypeID,
 			Name:        v.AccountType.Name,
 			Description: v.AccountType.Description,
 		})
@@ -76,4 +76,52 @@ func (c *CardService) GetCardNumber(id uint, id2 uint) []model.Account {
 		return []model.Account{}
 	}
 	return account
+}
+
+func (c *CardService) GetAccountByCardNumber(value string) model.Account {
+	//根据卡号获取账户信息
+	var account model.Account
+	tx := global.DB.Where("account_number = ? ", value).First(&account)
+	if tx.Error != nil {
+		return model.Account{}
+	}
+	return account
+
+}
+
+func (c *CardService) WithDrawOverDraft(s string, s2 string, amount float64, id uint) error {
+	//根据cardnumber获取账户信息
+	var account model.Account
+	_ = global.DB.Where("account_number = ? and account_type_id = ?", s, id).First(&account)
+	if account.PasswordHash != s2 {
+		return errors.New("密码错误")
+	}
+	//判断是否透支
+	if account.IsOverdraftLimitReached {
+		return errors.New("透支已经达到限额")
+	}
+	// 余额置为0
+	account.Balance = 0
+	account.OverdraftLimit -= amount
+	// 未还款才需要置为true
+	//account.IsOverdraftLimitReached = true
+
+	global.DB.Save(&account)
+	return nil
+}
+
+func (c *CardService) WithDraw(number string, password string, amount float64, id uint) error {
+	//根据cardnumber获取账户信息
+	var account model.Account
+	_ = global.DB.Where("account_number = ? and account_type_id = ?", number, id).First(&account)
+	if account.PasswordHash != password {
+		return errors.New("密码错误")
+	}
+	if account.Balance < amount {
+		return errors.New("余额不足")
+	}
+	account.Balance -= amount
+	global.DB.Save(&account)
+	return nil
+
 }

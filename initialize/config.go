@@ -8,7 +8,7 @@ import (
 
 func InitConfig() {
 	configFilePrefix := "config"
-	configFileName := fmt.Sprintf("D:\\go_code\\sql_bank\\%s.yaml", configFilePrefix)
+	configFileName := fmt.Sprintf("%s.yaml", configFilePrefix)
 
 	v := viper.New()
 	v.SetConfigFile(configFileName)

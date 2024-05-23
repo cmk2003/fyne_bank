@@ -6,6 +6,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
+	"sql_bank/page/admin"
 	"sql_bank/service"
 )
 
@@ -29,7 +30,14 @@ func MakeLoginUI(a fyne.App) {
 		if isCor, userInfo := userService.LoginSys(username.Text, password.Text); isCor {
 			fmt.Println("success")
 			//获取用户id
-			MakeMainUI(a, userInfo)
+			//如果是用户，跳转到用户界面
+			if userInfo.Role == 0 {
+				MakeMainUI(a, userInfo)
+			} else if userInfo.Role == 1 {
+				admin.MakeAdminMainUI(a, userInfo)
+			}
+
+			//如果是管理员调转到管理员界面
 			w.Close() // 关闭登录窗口
 		} else {
 			fmt.Println("fail")

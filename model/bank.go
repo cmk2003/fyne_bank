@@ -7,7 +7,7 @@ import (
 
 type User struct {
 	gorm.Model
-	Username string `json:"username" gorm:"type:varchar(20);not null" comment:"用户名"`
+	Username string `json:"username" gorm:"type:varchar(20);not null;unique" comment:"用户名"`
 	Password string `json:"password" gorm:"type:varchar(100);not null" comment:"密码"`
 	Role     int    `json:"role" gorm:"type:int;default:0" comment:"0:普通用户,1:管理员"`
 	Gender   int    `json:"gender" gorm:"type:int;default:0" comment:"0:女,1:男"`
@@ -22,15 +22,16 @@ type AccountType struct { //银行的名称 招商银行一卡通、牡丹行
 
 // Account 表示用户账户信息 进行存款
 type Account struct {
-	gorm.Model                 // 添加ID, CreatedAt, UpdatedAt, DeletedAt字段
-	UserID         uint        `gorm:"index"`                                  // 用户ID，索引以加速查询
-	AccountNumber  string      `gorm:"type:varchar(20);not null;unique;index"` // 账号，设置为唯一和索引
-	AccountTypeID  uint        `gorm:"index"`                                  // 外键，指向 AccountType
-	AccountType    AccountType `gorm:"foreignKey:AccountTypeID"`
-	PasswordHash   string      `gorm:"type:varchar(255);not null"`      // 存储加密后的密码
-	Balance        float64     `gorm:"type:decimal(10,2);default:0"`    // 账户余额，默认值为0
-	OverdraftLimit float64     `gorm:"type:decimal(10,2);default:1000"` // 透支限额
-	CreditRating   int         `gorm:"default:0"`                       // 信用等级
+	gorm.Model                          // 添加ID, CreatedAt, UpdatedAt, DeletedAt字段
+	UserID                  uint        `gorm:"index"`                                  // 用户ID，索引以加速查询
+	AccountNumber           string      `gorm:"type:varchar(20);not null;unique;index"` // 账号，设置为唯一和索引
+	AccountTypeID           uint        `gorm:"index"`                                  // 外键，指向 AccountType
+	AccountType             AccountType `gorm:"foreignKey:AccountTypeID"`
+	PasswordHash            string      `gorm:"type:varchar(255);not null"`      // 存储加密后的密码
+	Balance                 float64     `gorm:"type:decimal(10,2);default:0"`    // 账户余额，默认值为0
+	OverdraftLimit          float64     `gorm:"type:decimal(10,2);default:1000"` // 透支限额
+	CreditRating            int         `gorm:"default:0"`                       // 信用等级
+	IsOverdraftLimitReached bool        `gorm:"default:false"`                   // 是否达到透支限额
 }
 
 // Transaction 表示账户的交易记录

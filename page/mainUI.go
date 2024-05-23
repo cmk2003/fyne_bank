@@ -15,7 +15,7 @@ func MakeMainUI(a fyne.App, userInfo model.User) {
 	withdrawUI := MakeWithdrawUI(w, userInfo)
 
 	// 创建贷款界面
-	loanUI := MakeLoanUI()
+	loanUI := MakeLoanUI(w, userInfo)
 
 	// 创建转账界面
 	transferUI := MakeTransferUI()

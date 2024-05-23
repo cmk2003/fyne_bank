@@ -12,7 +12,7 @@ func main() {
 	initialize.InitDB()
 
 	//设置中文
-	err := os.Setenv("FYNE_FONT", "D:\\go_code\\sql_bank\\Front\\STFANGSO.TTF")
+	err := os.Setenv("FYNE_FONT", "Front/STFANGSO.TTF")
 	if err != nil {
 		return
 	}
