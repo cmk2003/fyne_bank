@@ -1,4 +1,4 @@
-package page
+package common
 
 import (
 	"fmt"
@@ -6,7 +6,6 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
-	"sql_bank/page/admin"
 	"sql_bank/service"
 )
 
@@ -21,20 +20,22 @@ func MakeLoginUI(a fyne.App) {
 	password.SetPlaceHolder("pass")
 
 	var loginButton *widget.Button // 先声明变量
-	//dialog := widget.NewLabel("")  // 初始化一个空的标签用于显示错误消息
-	//dialog.Hide()                  // 默认隐藏该标签
 	loginButton = widget.NewButton("login", func() {
 		fmt.Println(username.Text, password.Text)
-		username.Text = "user"
-		password.Text = "123456"
+		//username.Text = "root"
+		//password.Text = "123456"
 		if isCor, userInfo := userService.LoginSys(username.Text, password.Text); isCor {
 			fmt.Println("success")
-			//获取用户id
-			//如果是用户，跳转到用户界面
+			// 判断是否冻结
+			if userInfo.IsFrozen == true {
+				dialog.ShowInformation("失败", "账户已冻结", w)
+				return
+			}
 			if userInfo.Role == 0 {
+				//开个协程读取userid 从redis读取数据
 				MakeMainUI(a, userInfo)
 			} else if userInfo.Role == 1 {
-				admin.MakeAdminMainUI(a, userInfo)
+				MakeAdminMainUI(a, userInfo)
 			}
 
 			//如果是管理员调转到管理员界面
@@ -48,7 +49,6 @@ func MakeLoginUI(a fyne.App) {
 		username,
 		password,
 		loginButton,
-		//dialog,
 	))
 	w.Resize(fyne.NewSize(400, 300))
 	w.Show()

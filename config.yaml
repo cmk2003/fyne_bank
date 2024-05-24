@@ -4,3 +4,9 @@ mysql:
   db: 'sqlBank'
   user: 'root'
   password: '123456'
+
+redis:
+  host: '39.107.225.179'
+  port: '6379'
+  db: '4'
+  password: 'chen1888'

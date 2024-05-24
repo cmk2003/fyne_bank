@@ -1,4 +1,4 @@
-package page
+package user
 
 import (
 	"fmt"
@@ -9,6 +9,7 @@ import (
 	"sql_bank/model"
 	"sql_bank/service"
 	"strconv"
+	"time"
 )
 
 var cardService service.CardService
@@ -64,7 +65,19 @@ func MakeDepositUI(w fyne.Window, userInfo model.User) fyne.CanvasObject {
 			return
 		}
 		err = cardService.Saving(cardNumber, password, amount, selectedCardTypeID)
+		//根据卡号获取详细信息
+		number := cardService.GetAccountByCardNumber(cardNumber)
 		//交易表插入数据
+		transaction := model.Transaction{
+			Amount:          amount,
+			TransactionType: 2,
+			CardNumber:      cardNumber,
+			ToCardNumber:    "00000000",
+			Status:          "success",
+			TransactionDate: time.Now(),
+			AccountID:       number.ID,
+		}
+		err = transferService.AddTransfer(transaction)
 		if err != nil {
 			dialog.ShowInformation("失败", err.Error(), w)
 		} else {
@@ -73,14 +86,14 @@ func MakeDepositUI(w fyne.Window, userInfo model.User) fyne.CanvasObject {
 	})
 	// 布局
 	form := container.NewVBox(
-		widget.NewLabel("选择卡类别"),
-		cardTypeSelect,
-		widget.NewLabel("输入卡号"),
-		cardNumberEntry,
-		widget.NewLabel("输入密码"),
-		passwordEntry,
-		widget.NewLabel("输入存款金额"),
-		depositAmountEntry,
+		container.NewVBox(widget.NewLabel("选择卡类别"),
+			cardTypeSelect),
+		container.NewVBox(widget.NewLabel("输入卡号"),
+			cardNumberEntry),
+		container.NewVBox(widget.NewLabel("输入密码"),
+			passwordEntry),
+		container.NewVBox(widget.NewLabel("输入存款金额"),
+			depositAmountEntry),
 		submitButton,
 	)
 

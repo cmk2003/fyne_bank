@@ -1,4 +1,4 @@
-package page
+package user
 
 import (
 	"fmt"
@@ -9,6 +9,7 @@ import (
 	"sql_bank/model"
 	"sql_bank/service"
 	"strconv"
+	"time"
 )
 
 var (
@@ -22,7 +23,7 @@ func MakeWithdrawUI(w fyne.Window, userInfo model.User) fyne.CanvasObject {
 	// 用户信息标签
 	balanceLabel := widget.NewLabel("当前余额: N/A")
 	OverdraftLimitLabel := widget.NewLabel("当前可透支额度: N/A")
-	creditLevelLabel := widget.NewLabel("信誉等级:" + strconv.Itoa(info.CreditRating))
+	creditLevelLabel := widget.NewLabel("信誉等级:N/A")
 	//overdraftRecordLabel := widget.NewLabel("透支记录: N/A")
 
 	// 卡类别选择 根据用户id选择已经开户的卡
@@ -40,6 +41,7 @@ func MakeWithdrawUI(w fyne.Window, userInfo model.User) fyne.CanvasObject {
 		account := cardService.GetAccountByCardNumber(value)
 		balanceLabel.SetText("当前余额: " + strconv.FormatFloat(account.Balance, 'f', 2, 64))
 		OverdraftLimitLabel.SetText("当前可透支额度: " + strconv.FormatFloat(account.OverdraftLimit, 'f', 2, 64))
+		creditLevelLabel.SetText("信誉等级:" + strconv.Itoa(account.CreditRating))
 	})
 
 	for _, cardType := range cardTypeList {
@@ -75,6 +77,7 @@ func MakeWithdrawUI(w fyne.Window, userInfo model.User) fyne.CanvasObject {
 		// Fetch the updated account information
 		updatedAccount := cardService.GetAccountByCardNumber(cardNumberSelect.Selected)
 		// Fetch and format the overdraft records
+		fmt.Println("updatedAccount", updatedAccount.ID)
 		overdraftRecords := OverdraftService.GetOverDraftByAccountId(updatedAccount.ID)
 		// Create and show the dialog_recrd
 
@@ -143,6 +146,17 @@ func MakeWithdrawUI(w fyne.Window, userInfo model.User) fyne.CanvasObject {
 							amount = amount - account.Balance
 							err := cardService.WithDrawOverDraft(cardNumber, password, amount, selectedCardTypeID)
 							_ = OverdraftService.AddOverdraft(account.ID, amount)
+							//新增交易记录
+							transaction := model.Transaction{
+								Amount:          amount,
+								TransactionType: 6,
+								CardNumber:      "00000000",
+								ToCardNumber:    cardNumber,
+								Status:          "success",
+								TransactionDate: time.Now(),
+								AccountID:       account.ID,
+							}
+							err = transferService.AddTransfer(transaction)
 							if err != nil {
 								dialog.ShowInformation("失败", err.Error(), w)
 							} else {
@@ -152,9 +166,6 @@ func MakeWithdrawUI(w fyne.Window, userInfo model.User) fyne.CanvasObject {
 								balanceLabel.SetText("当前余额: " + strconv.FormatFloat(updatedAccount.Balance, 'f', 2, 64))
 								OverdraftLimitLabel.SetText("当前可透支额度: " + strconv.FormatFloat(updatedAccount.OverdraftLimit, 'f', 2, 64))
 								creditLevelLabel.SetText("信誉等级:" + string(rune(updatedAccount.CreditRating)))
-								// You need to implement a method to fetch the overdraft record
-								//overdraftRecord := OverdraftService.GetOverdraftRecord(updatedAccount.ID)
-								//overdraftRecordLabel.SetText("透支记录: " + overdraftRecord)
 
 							}
 						}
@@ -162,6 +173,17 @@ func MakeWithdrawUI(w fyne.Window, userInfo model.User) fyne.CanvasObject {
 				}, w).Show()
 			} else {
 				err = cardService.WithDraw(cardNumber, password, amount, selectedCardTypeID)
+				//新增交易记录
+				transaction := model.Transaction{
+					Amount:          amount,
+					TransactionType: 3,
+					CardNumber:      "00000000",
+					ToCardNumber:    cardNumber,
+					Status:          "success",
+					TransactionDate: time.Now(),
+					AccountID:       account.ID,
+				}
+				err = transferService.AddTransfer(transaction)
 				if err != nil {
 					dialog.ShowInformation("失败", err.Error(), w)
 				} else {

@@ -31,6 +31,7 @@ func InitDB() {
 		NamingStrategy: schema.NamingStrategy{
 			SingularTable: true,
 		},
+		SkipDefaultTransaction: true,
 	})
 	if err != nil {
 		panic(err)
