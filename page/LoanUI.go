@@ -7,7 +7,14 @@ import (
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/widget"
 	"sql_bank/model"
+	"sql_bank/service"
 	"strconv"
+	"time"
+)
+
+var (
+	cardTypeService = service.CardTypeService{}
+	loanService     = service.LoanService{}
 )
 
 // CalculateLoanAmount 根据信用等级计算可贷款金额
@@ -27,13 +34,42 @@ func CalculateLoanAmount(creditRating int) float64 {
 		return 0.0 // 不合法的信用等级
 	}
 }
+func getDepositRate(duration time.Duration) float64 {
+	// 利率表（示例）
+	// 3个月、6个月、1年、2年、3年、5年
+	rates := map[string]float64{
+		"3m": 1.463,
+		"6m": 1.725,
+		"1y": 2.05,
+		"2y": 2.78,
+		"3y": 3.538,
+		"5y": 3.194,
+	}
+
+	switch {
+	case duration <= 3*30*24*time.Hour:
+		return rates["3m"]
+	case duration <= 6*30*24*time.Hour:
+		return rates["6m"]
+	case duration <= 12*30*24*time.Hour:
+		return rates["1y"]
+	case duration <= 2*365*24*time.Hour:
+		return rates["2y"]
+	case duration <= 3*365*24*time.Hour:
+		return rates["3y"]
+	case duration <= 5*365*24*time.Hour:
+		return rates["5y"]
+	default:
+		return rates["5y"]
+	}
+}
 func MakeLoanUI(w fyne.Window, userInfo model.User) fyne.CanvasObject {
 
 	info := cardService.GetAccountInfo(userInfo.ID)
 	fmt.Println(info)
 	// 信誉等级决定可以贷款的多少
 	creditLevelLabel := widget.NewLabel("信誉等级:" + strconv.Itoa(info.CreditRating))
-	loanLabel := widget.NewLabel("可贷款金额：" + strconv.FormatFloat(CalculateLoanAmount(info.CreditRating), 'f', 2, 64) + "元")
+	loanLabel := widget.NewLabel("一次可贷款金额：" + strconv.FormatFloat(CalculateLoanAmount(info.CreditRating), 'f', 2, 64) + "元")
 
 	// 卡类别选择 根据用户id选择已经开户的卡
 	cardTypeList := cardService.GetCardType(userInfo.ID)
@@ -53,6 +89,7 @@ func MakeLoanUI(w fyne.Window, userInfo model.User) fyne.CanvasObject {
 	}
 	fmt.Println(cardTypeOptions)
 	// 定义一个变量来保存所选卡类别的ID
+	curRate := 0.0
 	var selectedCardTypeID uint
 	cardTypeSelect := widget.NewSelect(cardTypeOptions, func(value string) {
 		// 在回调中查找所选项的ID
@@ -72,6 +109,7 @@ func MakeLoanUI(w fyne.Window, userInfo model.User) fyne.CanvasObject {
 				fmt.Println(cardNumberOptions)
 				cardNumberSelect.Options = cardNumberOptions // 更新选项
 				cardNumberSelect.Refresh()                   // 刷新选择器
+				curRate = cardTypeService.GetCardTypeRate(selectedCardTypeID)
 				break
 			}
 		}
@@ -80,17 +118,6 @@ func MakeLoanUI(w fyne.Window, userInfo model.User) fyne.CanvasObject {
 	passwordEntry := widget.NewPasswordEntry()
 	passwordEntry.SetPlaceHolder("请输入密码")
 
-	submitButton := widget.NewButton("提交", func() {
-		cardType := cardTypeSelect.Selected
-		cardNumber := cardNumberSelect.Selected
-		password := passwordEntry.Text
-
-		if cardType == "" || cardNumber == "" || password == "" {
-			dialog.ShowInformation("错误", "所有字段均为必填项", w)
-			return
-		}
-
-	})
 	overdraftRecordLink := widget.NewHyperlink("贷款记录", nil)
 	overdraftRecordLink.OnTapped = func() {
 		//卡号 TODO 贷款记录
@@ -118,7 +145,143 @@ func MakeLoanUI(w fyne.Window, userInfo model.User) fyne.CanvasObject {
 		dialog_recrd.Show()
 
 	}
+	//时间选择器
+	currentYear := time.Now().Year()
+	years := []string{}
+	for i := currentYear; i <= currentYear+5; i++ {
+		years = append(years, fmt.Sprintf("%d", i))
+	}
+	yearSelect := widget.NewSelect(years, nil)
+	yearSelect.PlaceHolder = "YYYY"
 
+	months := []string{}
+	for i := 1; i <= 12; i++ {
+		months = append(months, fmt.Sprintf("%02d", i))
+	}
+	monthSelect := widget.NewSelect(months, nil)
+	monthSelect.PlaceHolder = "MM"
+
+	days := []string{}
+	for i := 1; i <= 31; i++ {
+		days = append(days, fmt.Sprintf("%02d", i))
+	}
+	daySelect := widget.NewSelect(days, nil)
+	daySelect.PlaceHolder = "DD"
+
+	selectedDate := widget.NewLabel("Selected Date: ----/--/--")
+	selectedRate := widget.NewLabel("利率:" + strconv.FormatFloat(0.0, 'f', 2, 64))
+	selectButton := widget.NewButton("Select Date", func() {
+		year, err1 := strconv.Atoi(yearSelect.Selected)
+		month, err2 := strconv.Atoi(monthSelect.Selected)
+		day, err3 := strconv.Atoi(daySelect.Selected)
+		if err1 == nil && err2 == nil && err3 == nil {
+			selectedDateStr := fmt.Sprintf("%04d/%02d/%02d", year, month, day)
+			selectedDate.SetText("Selected Date: " + selectedDateStr)
+			selectedTime, _ := time.Parse("2006/01/02", selectedDateStr)
+			fmt.Println(selectedDate)
+			duration := selectedTime.Sub(time.Now())
+			// 计算利率
+			fmt.Println(duration, curRate)
+			rate := getDepositRate(duration) * curRate
+			selectedRate.SetText("利率:" + strconv.FormatFloat(rate, 'f', 2, 64))
+		} else {
+			selectedDate.SetText("Invalid date selected")
+		}
+	})
+
+	datePicker := container.NewVBox(
+		container.NewHBox(widget.NewLabel("Year:"),
+			yearSelect, widget.NewLabel("Month:"), monthSelect,
+			widget.NewLabel("Day:"), daySelect,
+			selectButton,
+			selectedDate,
+			selectedRate,
+		),
+	)
+	//贷款金额
+	loanAmountEntry := widget.NewEntry()
+	loanAmountEntry.SetPlaceHolder("请输入贷款金额")
+
+	//提交按钮
+	submitButton := widget.NewButton("提交", func() {
+		cardType := cardTypeSelect.Selected
+		cardNumber := cardNumberSelect.Selected
+		password := passwordEntry.Text
+		loanAmount := loanAmountEntry.Text
+
+		year, _ := strconv.Atoi(yearSelect.Selected)
+		month, _ := strconv.Atoi(monthSelect.Selected)
+		day, _ := strconv.Atoi(daySelect.Selected)
+		selectedDateStr := fmt.Sprintf("%04d/%02d/%02d", year, month, day)
+		selectedTime, _ := time.Parse("2006/01/02", selectedDateStr)
+		fmt.Println(selectedDate)
+		duration := selectedTime.Sub(time.Now())
+
+		if cardType == "" || cardNumber == "" || password == "" || loanAmount == "" {
+			dialog.ShowInformation("错误", "所有字段均为必填项", w)
+			return
+		}
+		// 贷款金额必须是正数
+		loanAmountFloat, err := strconv.ParseFloat(loanAmount, 64)
+		if err != nil || loanAmountFloat <= 0 {
+			dialog.ShowInformation("错误", "贷款金额必须是正数", w)
+			return
+		}
+		//贷款金额是否超过
+		if loanAmountFloat > CalculateLoanAmount(info.CreditRating) {
+			dialog.ShowInformation("错误", "贷款金额超过信用等级限制", w)
+			return
+		}
+		//计算利息
+		// 计算利息
+		interest := loanAmountFloat * curRate / 100 * duration.Hours() / (365 * 24)
+
+		//显示详细信息到一个表上
+		bankName := cardTypeService.GetBankNameByCardTypeId(selectedCardTypeID)
+		details := fmt.Sprintf("卡类型: %s\n卡号: %s\n贷款金额: %s\n选择的日期: %s\n当前利率 %s\n 本次贷款利息: %.2f\n 银行名称: %s\n",
+			cardType, cardNumber, loanAmount, selectedDateStr, selectedRate.Text[6:], interest, bankName)
+
+		detailLabel := widget.NewLabel(details)
+
+		dialog_recrd := dialog.NewCustomConfirm("贷款详情", "确定", "取消", container.NewVScroll(detailLabel), func(confirm bool) {
+			if confirm {
+				// 确认操作
+				fmt.Println("确认提交贷款信息")
+				//密码是否正确
+				if !cardService.VerifyPassword(cardNumber, password) {
+					dialog.ShowInformation("错误", "密码错误", w)
+					return
+				}
+				//生成贷款记录
+				loanRecord := model.Loan{
+					AccountID:       cardService.GetAccountByCardNumber(cardNumber).ID,
+					AmountBorrowed:  loanAmountFloat,
+					InterestRate:    curRate,
+					LoanDate:        time.Now(),
+					DueDate:         selectedTime,
+					InterestAccrued: interest,
+				}
+				err2 := loanService.AddLoan(loanRecord)
+				if err2 != nil {
+					dialog.ShowInformation("失败", "贷款失败", w)
+					return
+				}
+				//向余额里面加钱
+				err2 = cardService.AddBalanceFromLoan(cardNumber, loanAmountFloat)
+				if err2 != nil {
+					dialog.ShowInformation("失败", "贷款失败", w)
+					return
+				}
+				dialog.ShowInformation("成功", "贷款成功，注意查收账户余额", w)
+			} else {
+				// 取消操作
+				fmt.Println("取消提交贷款信息")
+			}
+		}, w)
+		dialog_recrd.Resize(fyne.NewSize(500, 300)) // Adjust the size as needed
+		dialog_recrd.Show()
+
+	})
 	// 布局
 	top := container.NewHBox(
 		creditLevelLabel,
@@ -132,6 +295,10 @@ func MakeLoanUI(w fyne.Window, userInfo model.User) fyne.CanvasObject {
 		cardNumberSelect,
 		widget.NewLabel("输入密码"),
 		passwordEntry,
+		widget.NewLabel("选择时间"),
+		datePicker,
+		widget.NewLabel("输入贷款金额"),
+		loanAmountEntry,
 		submitButton,
 	)
 	return form

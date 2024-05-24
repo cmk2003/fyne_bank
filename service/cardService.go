@@ -4,6 +4,7 @@ import (
 	"errors"
 	"sql_bank/global"
 	"sql_bank/model"
+	"strconv"
 )
 
 type CardService struct {
@@ -14,6 +15,10 @@ type ResCardType struct {
 	Name        string `gorm:"type:varchar(20);not null;unique" json:"name"` // 账户类型名称，如"招商银行一卡通"
 	Description string `gorm:"type:varchar(255);" json:"description"`        // 账户类型描述
 }
+
+var (
+	transferService = TransferService{}
+)
 
 func (c *CardService) GetCardType(id uint) []ResCardType {
 	//查找当前用户已经开户的分类
@@ -124,4 +129,97 @@ func (c *CardService) WithDraw(number string, password string, amount float64, i
 	global.DB.Save(&account)
 	return nil
 
+}
+
+func (c *CardService) VerifyPassword(number string, password string) bool {
+	//验证密码
+	var account model.Account
+	_ = global.DB.Where("account_number = ?", number).First(&account)
+	if account.PasswordHash == password {
+		return true
+	}
+	return false
+}
+
+func (c *CardService) AddBalanceFromLoan(number string, float float64) error {
+	//根据卡号增加余额
+	var account model.Account
+	_ = global.DB.Where("account_number = ?", number).First(&account)
+	account.Balance += float
+	tx := global.DB.Save(&account)
+	if tx.Error != nil {
+		return errors.New("存款失败")
+	}
+	return nil
+}
+
+// 转账
+func (c *CardService) Transfer(selected string, text2 string, text3 string, transaction model.Transaction) error {
+	// 开启事务
+	tx := global.DB.Begin()
+	if tx.Error != nil {
+		return errors.New("开启事务失败")
+	}
+
+	// 查询发起方账户
+	var account model.Account
+	if err := tx.Where("account_number = ?", selected).First(&account).Error; err != nil {
+		tx.Rollback()
+		return errors.New("查询账户失败")
+	}
+
+	// 转换金额
+	val, err := strconv.ParseFloat(text3, 64)
+	if err != nil {
+		tx.Rollback()
+		return errors.New("金额转换失败")
+	}
+
+	// 检查余额是否充足
+	if account.Balance < val {
+		tx.Rollback()
+		return errors.New("余额不足")
+	}
+
+	// 扣减发起方账户余额
+	account.Balance -= val
+	if err := tx.Save(&account).Error; err != nil {
+		tx.Rollback()
+		return errors.New("更新账户余额失败")
+	}
+
+	// 查询接收方账户
+	var account2 model.Account
+	if err := tx.Where("account_number = ?", text2).First(&account2).Error; err != nil {
+		tx.Rollback()
+		return errors.New("查询对方账户失败")
+	}
+
+	// 增加接收方账户余额
+	account2.Balance += val
+	if err := tx.Save(&account2).Error; err != nil {
+		tx.Rollback()
+		return errors.New("更新对方账户余额失败")
+	}
+	// 插入一条初始状态的事务记录
+	if err := tx.Create(&transaction).Error; err != nil {
+		tx.Rollback()
+		return errors.New("初始化事务失败")
+	}
+
+	// 记录交易
+	transaction.Status = "success"
+
+	// 使用事务保存交易记录
+	if err := tx.Save(&transaction).Error; err != nil {
+		tx.Rollback()
+		return errors.New("更新事务状态失败")
+	}
+
+	// 提交事务
+	if err := tx.Commit().Error; err != nil {
+		return errors.New("提交事务失败")
+	}
+
+	return nil
 }

@@ -12,12 +12,19 @@ type User struct {
 	Role     int    `json:"role" gorm:"type:int;default:0" comment:"0:普通用户,1:管理员"`
 	Gender   int    `json:"gender" gorm:"type:int;default:0" comment:"0:女,1:男"`
 }
+type Bank struct {
+	gorm.Model
+	Name        string `gorm:"type:varchar(20);not null;unique" comment:"银行名称"`
+	Description string `gorm:"type:varchar(255);" comment:"银行描述"`
+}
 type AccountType struct { //银行的名称 招商银行一卡通、牡丹行
 	gorm.Model
 	Name            string  `gorm:"type:varchar(20);not null;unique"` // 账户类型名称，如"招商银行一卡通"
 	Description     string  `gorm:"type:varchar(255);"`               // 账户类型描述
 	OverdraftPolicy bool    `gorm:"default:false"`                    // 是否允许透支
 	InterestRate    float64 `gorm:"type:decimal(5,2);default:0"`      // 对应的利率，适用于贷款或透支
+	BankID          uint    `gorm:"index"`                            // 外键，指向银行
+	Bank            Bank    `gorm:"foreignKey:BankID"`
 }
 
 // Account 表示用户账户信息 进行存款
@@ -37,24 +44,30 @@ type Account struct {
 // Transaction 表示账户的交易记录
 type Transaction struct {
 	gorm.Model
-	AccountID       uint      `gorm:"index"` // 关联的账户ID
-	Account         Account   `gorm:"foreignKey:AccountID"`
-	Type            string    `gorm:"type:varchar(20);not null"`   // 交易类型，如"deposit", "withdrawal"
+	AccountID uint    `gorm:"index"` // 关联的账户ID
+	Account   Account `gorm:"foreignKey:AccountID"`
+	// 交易类型，1 是转账 2是存款 3是取款 4 是贷款 5是还款 6 是透支 7是透支还款 8是回滚
+	TransactionType int       `gorm:"type:int;not null;default:1"`
 	Amount          float64   `gorm:"type:decimal(10,2);not null"` // 交易金额
 	TransactionDate time.Time // 交易日期
 	Status          string    `gorm:"type:varchar(20)"` // 交易状态，如"success", "failed"
+	//交易的卡号
+	CardNumber string `gorm:"type:varchar(20);not null"`
+	//接受方的卡号 银行卡号为00000000
+	ToCardNumber string `gorm:"type:varchar(20);not null"`
 }
 
 // Loan 表示贷款信息
 type Loan struct {
 	gorm.Model
-	AccountID      uint      `gorm:"index"` // 关联的账户ID
-	Account        Account   `gorm:"foreignKey:AccountID"`
-	AmountBorrowed float64   `gorm:"type:decimal(10,2);not null"` // 借款金额
-	LoanDate       time.Time // 贷款日期
-	DueDate        time.Time // 还款到期日期
-	InterestRate   float64   `gorm:"type:decimal(5,2);not null"` // 利率
-	Status         string    `gorm:"type:varchar(20);not null"`  // 贷款状态，如"active", "closed"
+	AccountID       uint      `gorm:"index"` // 关联的账户ID
+	Account         Account   `gorm:"foreignKey:AccountID"`
+	AmountBorrowed  float64   `gorm:"type:decimal(10,2);not null"` // 借款金额
+	LoanDate        time.Time // 贷款日期
+	DueDate         time.Time // 还款到期日期
+	InterestRate    float64   `gorm:"type:decimal(5,2);not null"`   // 利率
+	InterestAccrued float64   `gorm:"type:decimal(10,2);default:0"` // 利息
+	Status          bool      `gorm:"default:false"`                // 是否已还款
 }
 
 // Overdrafts 表存储透支还款记录

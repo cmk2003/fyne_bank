@@ -18,10 +18,10 @@ func MakeMainUI(a fyne.App, userInfo model.User) {
 	loanUI := MakeLoanUI(w, userInfo)
 
 	// 创建转账界面
-	transferUI := MakeTransferUI()
+	transferUI := MakeTransferUI(w, userInfo)
 
 	// 创建还贷界面
-	repayUI := MakeRepayUI()
+	repayUI := MakeRepayUI(w, userInfo)
 
 	// 使用Tabs容器来组织不同的功能界面
 	tabs := container.NewAppTabs(
@@ -29,7 +29,7 @@ func MakeMainUI(a fyne.App, userInfo model.User) {
 		container.NewTabItem("取钱", withdrawUI),
 		container.NewTabItem("贷款", loanUI),
 		container.NewTabItem("转账", transferUI),
-		container.NewTabItem("换贷款", repayUI),
+		container.NewTabItem("还贷款", repayUI),
 	)
 
 	w.SetContent(tabs)

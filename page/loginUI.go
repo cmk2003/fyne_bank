@@ -21,11 +21,9 @@ func MakeLoginUI(a fyne.App) {
 	password.SetPlaceHolder("pass")
 
 	var loginButton *widget.Button // 先声明变量
-	//dialog := widget.NewLabel("")  // 初始化一个空的标签用于显示错误消息
-	//dialog.Hide()                  // 默认隐藏该标签
 	loginButton = widget.NewButton("login", func() {
 		fmt.Println(username.Text, password.Text)
-		username.Text = "user"
+		username.Text = "root"
 		password.Text = "123456"
 		if isCor, userInfo := userService.LoginSys(username.Text, password.Text); isCor {
 			fmt.Println("success")
@@ -48,7 +46,6 @@ func MakeLoginUI(a fyne.App) {
 		username,
 		password,
 		loginButton,
-		//dialog,
 	))
 	w.Resize(fyne.NewSize(400, 300))
 	w.Show()
