@@ -6,7 +6,7 @@ mysql:
   password: '123456'
 
 redis:
-  host: '39.107.225.179'
+  host: 'xxxx'
   port: '6379'
   db: '4'
-  password: 'chen1888'
+  password: 'xxx'
