@@ -112,7 +112,7 @@ func MakeTransferUI(w fyne.Window, userInfo model.User) fyne.CanvasObject {
 		// 验证余额
 		depositAmount, _ := strconv.ParseFloat(depositAmountEntry.Text, 64)
 		if info.Balance < depositAmount {
-			dialog.ShowInformation("错误", "余额不足", w)
+			dialog.ShowInformation("错误", "余额不足1", w)
 			return
 		}
 		//获取对方账户的用户名

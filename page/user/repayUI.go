@@ -153,6 +153,7 @@ func MakeRepayUI(w fyne.Window, userInfo model.User) fyne.CanvasObject {
 		//确认框
 		dialog.NewConfirm("确认还款", "确认还款吗", func(b bool) {
 			if b {
+				info := cardService.GetAccountInfo(userInfo.ID)
 				//还款 验证余额是否足够
 				if info.Balance < loanList[rowSelected].AmountBorrowed+loanList[rowSelected].InterestAccrued {
 					dialog.ShowInformation("Error", "余额不足", w)

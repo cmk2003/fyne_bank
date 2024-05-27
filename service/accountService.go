@@ -123,3 +123,17 @@ func (a *AccountService) BanAccount(id uint) {
 		return
 	}
 }
+
+func (a *AccountService) UnBanAccount(id uint) {
+	var account model.Account
+	tx := global.DB.Where("id = ?", id).First(&account)
+	if tx.Error != nil {
+		return
+	}
+	account.IsOverdraftLimitReached = false
+	tx = global.DB.Save(&account)
+	if tx.Error != nil {
+		return
+	}
+
+}

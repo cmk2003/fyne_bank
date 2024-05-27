@@ -141,7 +141,7 @@ func MakeLoanManager(w fyne.Window, userInfo model.User) *fyne.Container {
 		}
 	})
 	//给账户id提示还款
-	repayButton := widget.NewButton("还款", func() {
+	repayButton := widget.NewButton("提醒还款", func() {
 		if rowSelected < 0 {
 			dialog.ShowInformation("Error", "No user selected", w)
 			return
@@ -156,7 +156,15 @@ func MakeLoanManager(w fyne.Window, userInfo model.User) *fyne.Container {
 			dialog.ShowInformation("Success", "提醒还款成功", w)
 		}
 	})
+	// 查看未还款的信息
+	searchNoPayButton := widget.NewButton("查看未还款", func() {
+		//获取透支信息
+		//获取根据卡类别选择卡号userid和typeid 获取account信息 在一个类型下可能有多个卡
+		loanList = loanService.GetNoPayLoan("", currentPage, pageSize)
+		//更新
+		loanTable.Refresh()
 
+	})
 	//top := container.NewHBox(searchEntry)
 
 	return container.NewVBox(
@@ -165,7 +173,8 @@ func MakeLoanManager(w fyne.Window, userInfo model.User) *fyne.Container {
 		container.NewHBox(
 			previousPageButton,
 			nextPageButton,
-			repayButton),
+			repayButton,
+			searchNoPayButton),
 		scrollContainer,
 	)
 	// 组装顶部控件

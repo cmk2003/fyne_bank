@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
 	"github.com/jasonlvhit/gocron"
 	"os"
@@ -17,7 +18,7 @@ func main() {
 	initialize.RecoverData()
 	//定时任务
 	s := gocron.NewScheduler()
-	err := s.Every(1).Wednesday().Do(task.RepayOverDraftsTask)
+	err := s.Every(10).Second().Do(task.RepayOverDraftsTask)
 	if err != nil {
 		return
 	}
@@ -28,6 +29,8 @@ func main() {
 		return
 	}
 	a := app.New()
+	icon, _ := fyne.LoadResourceFromPath("static/1.png")
+	a.SetIcon(icon)
 	common.MakeLoginUI(a)
 	a.Run()
 }

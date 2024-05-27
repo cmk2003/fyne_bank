@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"sql_bank/global"
 	"sql_bank/model"
 	"time"
@@ -33,20 +34,15 @@ func (s OverdraftService) GetOverDraftByAccountId(id uint) []model.Overdraft {
 
 // 获取所有没还的透支记录
 func (s OverdraftService) GetAllNoPaidOverDraft() []model.Overdraft {
-	var overDraft []model.Overdraft
-	tx := global.DB.Where("repaid = ?", false).Find(&overDraft)
-
-	for _, i2 := range overDraft {
-		first := global.DB.Preload("Account").First(&i2)
-		if first.Error != nil {
-			return []model.Overdraft{}
-		}
-	}
+	var overDrafts []model.Overdraft
+	tx := global.DB.Preload("Account").Where("repaid = ?", false).Find(&overDrafts)
 
 	if tx.Error != nil {
+		fmt.Println("Query Error:", tx.Error)
 		return []model.Overdraft{}
 	}
-	return overDraft
+
+	return overDrafts
 }
 
 func (s OverdraftService) UpdateOverDraft(draft model.Overdraft) {
@@ -55,17 +51,12 @@ func (s OverdraftService) UpdateOverDraft(draft model.Overdraft) {
 
 func (s OverdraftService) GetOverdraftList(ids []uint) []model.Overdraft {
 	var overdraftList []model.Overdraft
-	tx := global.DB.Where("account_id in (?)", ids).Find(&overdraftList)
-	for i, i2 := range overdraftList {
-		first := global.DB.Preload("Account").First(&i2)
-		if first.Error != nil {
-			return []model.Overdraft{}
-		}
-		overdraftList[i] = i2
-	}
+	tx := global.DB.Preload("Account").Where("account_id IN (?)", ids).Find(&overdraftList)
+
 	if tx.Error != nil {
 		return []model.Overdraft{}
 	}
+
 	return overdraftList
 }
 

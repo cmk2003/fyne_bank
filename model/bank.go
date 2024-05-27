@@ -23,11 +23,6 @@ type Bank struct {
 	Name        string `gorm:"type:varchar(20);not null;unique" comment:"银行名称"`
 	Description string `gorm:"type:varchar(255);" comment:"银行描述"`
 }
-type Bank struct {
-	gorm.Model
-	Name        string `gorm:"type:varchar(20);not null;unique" comment:"银行名称"`
-	Description string `gorm:"type:varchar(255);" comment:"银行描述"`
-}
 type AccountType struct { //银行的名称 招商银行一卡通、牡丹行
 	gorm.Model
 	Name            string  `gorm:"type:varchar(20);not null;unique"` // 账户类型名称，如"招商银行一卡通"
